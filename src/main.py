@@ -51,21 +51,21 @@ current_user = st.selectbox("Du bist", get_users())
 event = st.selectbox("Veranstaltung", get_events())
 ratings = get_rating_for_user_and_event(current_user, event)
 
+# hier könnten wir eigtl cachen bis wir den user oder die veranstaltung wechseln
 edited_df = st.data_editor(
     ratings,
     column_config={
-        "Bewertung": st.column_config.NumberColumn(
+        "Bewertung": st.column_config.SelectboxColumn(
             "Deine Bewertung",
             help="Wie fandest du die Performance (1-5)?",
-            min_value=1,
-            max_value=5,
-            step=1,
-            format="%d ⭐",
+            options=[1, 2, 3, 4, 5],
+            required=True,
         ),
     },
     hide_index=True,
     use_container_width=True,
-    disabled="Mitglied",
+    disabled=["Mitglied"],
+    
 )
 
 edited_df["Mitglied"] = f"{current_user}.{event}." + edited_df["Mitglied"].astype('str')
