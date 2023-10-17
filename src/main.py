@@ -1,61 +1,56 @@
 import streamlit as st
 import pymongo
 import pandas as pd
+import os  # For reading environment variables
 
-# Initialize connection.
-# Uses st.cache_resource to only run once.
-@st.cache_resource
-def init_connection():
-    return pymongo.MongoClient("mongodb://fickse_probablyat:35b6e41ff5b02cab42905b5de5e16e935d1a6e8f@161.97.121.243:27018/fickse_probablyat")
+# Establish the MongoDB connection
+def get_database():
+    uri = st.secrets["mongo"]["uri"]  # Read from environment variable
+    if not uri:
+        raise ValueError("Please set the MONGODB_URI environment variable!")
+    client = pymongo.MongoClient(uri)
+    return client.fickse_probablyat
 
-client = init_connection()
-
-# Pull data from the collection.
-# Uses st.cache_data to only rerun when the query changes or after 10 min.
-@st.cache_data(ttl=600)
+# Pull users from the collection
+@st.cache_data(ttl=600, show_spinner=False)
 def get_users():
-    db = client.fickse_probablyat
-    items = db.Mitglieder.find()
-    items = list(items)  # make hashable for st.cache_data
-    users = [doc["name"] for doc in items]
-    return users
+    db = get_database()
+    items = db.Mitglieder.find({}, {"name": 1})
+    return sorted(doc["name"] for doc in items)
 
-@st.cache_data(ttl=0)
+@st.cache_data(ttl=600, show_spinner=False)
 def get_events():
-    db = client.fickse_probablyat
-    items = db.Veranstaltungen.find()
-    items = list(items)  # make hashable for st.cache_data
-    names = [doc["name"] for doc in items]
-    return names
+    db = get_database()
+    items = db.Veranstaltungen.find({}, {"name": 1})
+    return [doc["name"] for doc in items]
 
 def get_rating_for_user_and_event(current_user, event):
-    db = client.fickse_probablyat
-    collection = db.Bewertungen
-    # Fetch the document containing the "Markus" key
-    document = collection.find_one({current_user: {"$exists": True}})
-    # Extract the value associated with "Markus" or set to None if not present
-    value = document.get("Markus") if document else None
+    db = get_database()
+    document = db.Bewertungen.find_one({current_user: {"$exists": True}})
+    
+    value = document.get(current_user) if document else None
+    ratings = None
 
-    if value is not None:
-        ratings = value.get(event)
-    else:
-        ratings = None
+    if value:
+        ratings_dict = value.get(event)
+        if ratings_dict:
+            ratings = pd.DataFrame(list(ratings_dict.items()), columns=["Mitglied", "Bewertung"])
 
     if ratings is None:
         st.warning(f"Du hast noche keine Bewertung für {event}!")
         users = get_users()
         users.remove(current_user)
-        ratings = pd.DataFrame({"Mitglied": users,"Bewertung": [3 for _ in range(len(users))]})
+        ratings = pd.DataFrame({"Mitglied": users,"Bewertung": [3 for _ in users]})
 
     return ratings
 
-current_user = "Markus Raster"
-event = "Niederbühl"
+def update_rating(current_user, update_data):
+    db = get_database()
+    db.Bewertungen.update_one({current_user: {"$exists": True}}, update_data, upsert=True)
 
-events = get_events()
-event = st.selectbox("Veranstaltung", events)
+current_user = st.selectbox("Du bist", get_users())
+event = st.selectbox("Veranstaltung", get_events())
 ratings = get_rating_for_user_and_event(current_user, event)
-
 
 edited_df = st.data_editor(
     ratings,
@@ -70,6 +65,9 @@ edited_df = st.data_editor(
         ),
     },
     hide_index=True,
+    use_container_width=True,
 )
 
-st.write(edited_df.to_dict())
+edited_df["Mitglied"] = f"{current_user}.{event}." + edited_df["Mitglied"].astype('str')
+new_ratings = dict(zip(edited_df['Mitglied'], edited_df['Bewertung']))
+update_rating(current_user, {"$set": new_ratings})
