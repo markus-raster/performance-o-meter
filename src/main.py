@@ -1,7 +1,6 @@
 import streamlit as st
 import pymongo
 import pandas as pd
-import os  # For reading environment variables
 
 # Establish the MongoDB connection
 def get_database():
