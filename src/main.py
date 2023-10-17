@@ -23,6 +23,7 @@ def get_events():
     items = db.Veranstaltungen.find({}, {"name": 1})
     return [doc["name"] for doc in items]
 
+@st.cache_data(None, show_spinner=False, max_entries=1)
 def get_rating_for_user_and_event(current_user, event):
     db = get_database()
     document = db.Bewertungen.find_one({current_user: {"$exists": True}})
@@ -65,6 +66,7 @@ edited_df = st.data_editor(
     hide_index=True,
     use_container_width=True,
     disabled=["Mitglied"],
+    key="data"
     
 )
 
