@@ -65,6 +65,7 @@ edited_df = st.data_editor(
     },
     hide_index=True,
     use_container_width=True,
+    disabled="Mitglied",
 )
 
 edited_df["Mitglied"] = f"{current_user}.{event}." + edited_df["Mitglied"].astype('str')
