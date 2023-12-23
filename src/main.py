@@ -40,7 +40,7 @@ def get_rating_for_user_and_event(current_user, event):
         st.warning(f"Du hast noche keine Bewertung für {event}!")
         users = get_users()
         users.remove(current_user)
-        ratings = pd.DataFrame({"Mitglied": users,"Bewertung": [3 for _ in users]})
+        ratings = pd.DataFrame({"Mitglied": users,"Bewertung": [None for _ in users]})
 
     return ratings
 
