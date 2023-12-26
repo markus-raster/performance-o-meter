@@ -1,6 +1,7 @@
 import streamlit as st
 import pymongo
 import pandas as pd
+st. set_page_config(layout="wide")
 
 # Establish the MongoDB connection
 def get_database():
@@ -34,13 +35,17 @@ def get_rating_for_user_and_event(current_user, event):
     if value:
         ratings_dict = value.get(event)
         if ratings_dict:
-            ratings = pd.DataFrame(list(ratings_dict.items()), columns=["Mitglied", "Bewertung"])
+            # Creating a DataFrame from the dictionary
+            ratings = pd.DataFrame.from_dict(ratings_dict, orient='index', columns=['Bewertung', 'Begründung'])
+            ratings.reset_index(inplace=True)
+            ratings.rename(columns={'index': 'Mitglied'}, inplace=True)
+
 
     if ratings is None:
         st.warning(f"Du hast noche keine Bewertung für {event}!")
         users = get_users()
         users.remove(current_user)
-        ratings = pd.DataFrame({"Mitglied": users,"Bewertung": [None for _ in users]})
+        ratings = pd.DataFrame({"Mitglied": users,"Bewertung": [None for _ in users], "Begründung" : [None for _ in users]})
 
     return ratings
 
@@ -48,28 +53,41 @@ def update_rating(current_user, update_data):
     db = get_database()
     db.Bewertungen.update_one({current_user: {"$exists": True}}, update_data, upsert=True)
 
+st.markdown("<h1 style='text-align: center; color: #ff3377;'>Fickse Performance Rating</h1>", unsafe_allow_html=True)
+
+
+
 current_user = st.selectbox("Du bist", get_users())
-event = st.selectbox("Veranstaltung", get_events())
-ratings = get_rating_for_user_and_event(current_user, event)
+pw = st.text_input("Passwort", type="password")
 
-# hier könnten wir eigtl cachen bis wir den user oder die veranstaltung wechseln
-edited_df = st.data_editor(
-    ratings,
-    column_config={
-        "Bewertung": st.column_config.SelectboxColumn(
-            "Deine Bewertung",
-            help="Wie fandest du die Performance (1-5)?",
-            options=[1, 2, 3, 4, 5],
-            required=True,
-        ),
-    },
-    hide_index=True,
-    use_container_width=True,
-    disabled=["Mitglied"],
-    key="data"
-    
-)
+if pw == current_user[0:2] + "nomt":
+    event = st.selectbox("Veranstaltung", get_events())
+    ratings = get_rating_for_user_and_event(current_user, event)
 
-edited_df["Mitglied"] = f"{current_user}.{event}." + edited_df["Mitglied"].astype('str')
-new_ratings = dict(zip(edited_df['Mitglied'], edited_df['Bewertung']))
-update_rating(current_user, {"$set": new_ratings})
+    # hier könnten wir eigtl cachen bis wir den user oder die veranstaltung wechseln
+    edited_df = st.data_editor(
+        ratings,
+        column_config={
+            "Bewertung": st.column_config.SelectboxColumn(
+                "Deine Bewertung",
+                help="Wie fandest du die Performance (1-5)?",
+                options=[1, 2, 3, 4, 5],
+                required=False,
+            ),
+            "Begründung": st.column_config.TextColumn(
+                "Deine Begründung für die Performance des Aktuers",
+                help="Schreibe einen kreativen Text warum der Fickse Aktuer deine Bewerung bekommen hat.",
+                required=False
+
+            )
+        },
+        hide_index=True,
+        use_container_width=True,
+        disabled=["Mitglied"],
+        key="data"
+        
+    )
+
+    edited_df["Mitglied"] = f"{current_user}.{event}." + edited_df["Mitglied"].astype('str')
+    new_ratings = dict(zip(edited_df['Mitglied'], zip(edited_df['Bewertung'], edited_df['Begründung'])))
+    update_rating(current_user, {"$set": new_ratings})
