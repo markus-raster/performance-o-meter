@@ -97,4 +97,5 @@ if pw == current_user[0:2] + "nomt":
     update_rating(current_user, {"$set": new_ratings})
 
 else:
-    st.warning("Bitte das korrekte Passwort eingeben.")
+    if pw != "":
+        st.warning("Bitte das korrekte Passwort eingeben.")
