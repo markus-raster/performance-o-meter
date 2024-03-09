@@ -9,7 +9,7 @@ def get_database():
     if not uri:
         raise ValueError("Please set the MONGODB_URI environment variable!")
     client = pymongo.MongoClient(uri)
-    return client.fickse_probablyat
+    return client.fickse_bydustleft
 
 # Pull users from the collection
 @st.cache_data(ttl=600, show_spinner=False)
@@ -56,11 +56,15 @@ def update_rating(current_user, update_data):
 st.markdown("<h1 style='text-align: center; color: #ff3377;'>Fickse Performance Rating</h1>", unsafe_allow_html=True)
 
 
+user = st.empty()
+password = st.empty()
 
-current_user = st.selectbox("Du bist", get_users())
-pw = st.text_input("Passwort", type="password")
+current_user = user.selectbox("Du bist", get_users())
+pw = password.text_input("Passwort", type="password")
 
 if pw == current_user[0:2] + "nomt":
+    user.empty()
+    password.empty()
     event = st.selectbox("Veranstaltung", get_events())
     ratings = get_rating_for_user_and_event(current_user, event)
 
@@ -91,3 +95,6 @@ if pw == current_user[0:2] + "nomt":
     edited_df["Mitglied"] = f"{current_user}.{event}." + edited_df["Mitglied"].astype('str')
     new_ratings = dict(zip(edited_df['Mitglied'], zip(edited_df['Bewertung'], edited_df['Begründung'])))
     update_rating(current_user, {"$set": new_ratings})
+
+else:
+    st.warning("Bitte das korrekte Passwort eingeben.")
