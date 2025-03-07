@@ -9,7 +9,7 @@ def get_database():
     if not uri:
         raise ValueError("Please set the MONGODB_URI environment variable!")
     client = pymongo.MongoClient(uri)
-    return client.fickse_bydustleft
+    return client.fickse_toywestern
 
 # Pull users from the collection
 @st.cache_data(ttl=600, show_spinner=False)
