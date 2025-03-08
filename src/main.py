@@ -24,7 +24,7 @@ def get_events():
     items = db.Veranstaltungen.find({}, {"name": 1})
     return [doc["name"] for doc in items]
 
-@st.cache_data(None, show_spinner=False, max_entries=1)
+#@st.cache_data(None, show_spinner=False, max_entries=1)
 def get_rating_for_user_and_event(current_user, event):
     db = get_database()
     document = db.Bewertungen.find_one({current_user: {"$exists": True}})
@@ -53,6 +53,9 @@ def update_rating(current_user, update_data):
     db = get_database()
     db.Bewertungen.update_one({current_user: {"$exists": True}}, update_data, upsert=True)
 
+def del_rating():
+    del st.session_state['rating']
+
 st.markdown("<h1 style='text-align: center; color: #ff3377;'>Fickse Performance Rating</h1>", unsafe_allow_html=True)
 
 
@@ -65,12 +68,15 @@ pw = password.text_input("Passwort", type="password")
 if pw == current_user[0:2] + "nomt":
     user.empty()
     password.empty()
-    event = st.selectbox("Veranstaltung", get_events())
-    ratings = get_rating_for_user_and_event(current_user, event)
+    event = st.selectbox("Veranstaltung", get_events(), on_change=del_rating)
+
+    # Initialization
+    if 'rating' not in st.session_state:
+        st.session_state['rating'] = get_rating_for_user_and_event(current_user, event)
 
     # hier könnten wir eigtl cachen bis wir den user oder die veranstaltung wechseln
     edited_df = st.data_editor(
-        ratings,
+        st.session_state['rating'],
         column_config={
             "Bewertung": st.column_config.SelectboxColumn(
                 "Deine Bewertung",
